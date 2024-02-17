@@ -18,6 +18,10 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import io
+import pytesseract
+import easyocr
+import numpy as np
 
 
 import pandas as pd
@@ -56,12 +60,48 @@ def scrape_data(company_name: str):
     # print(company_name)
 
     # Enter the captcha in the captcha box (Hint: You can use Google lens, Python OCR libraries like pytesseract, etc.)
+    captcha_element = driver.find_element(By.ID, "capImg")
+    driver.execute_script("arguments[0].scrollIntoView(true);", captcha_element)
+    time.sleep(1)
+    screenshot = driver.get_screenshot_as_png()
+
+    screenshot = Image.open(io.BytesIO(screenshot))
+    screenshot.save('screenshot.png')
+
+    location = captcha_element.location_once_scrolled_into_view
+    size = captcha_element.size
+
+    left = location['x'] + 610
+    top = location['y'] + 220
+    right = location['x'] + size['width'] + 720
+    bottom = location['y'] + size['height'] + 290
+
+    captcha_image = screenshot.crop((left, top, right, bottom))
+    captcha_image.save('captcha.png')
+    # captext = pytesseract.image_to_string(captcha_image)
+    captcha_image_np = np.array(captcha_image)
+
+    reader = easyocr.Reader(['en'])  # You can specify language(s) as needed
+    captcha_text = reader.readtext(captcha_image_np)
+
+    # Extract text from the OCR results
+    captcha_text = ' '.join([result[1] for result in captcha_text])
+
+    
+    captcha_arr = captcha_text.split(' ')
+
+    new_cap_txt = ""
+    for txt in captcha_arr:
+        new_cap_txt = new_cap_txt + txt
+    print(new_cap_txt)
+    captcha_box = driver.find_element(By.ID, "captcha")
+    captcha_box.send_keys(new_cap_txt)
 
 
     # Click on the search button
     search_button = driver.find_element(By.ID, "searchEmployer")
     search_button.click()
-
+    time.sleep(5)
 
     # TODO: Fill out the code for the following steps
     # Step 2 - Refer to the sample_output/step_2.png for the screenshot of the page
